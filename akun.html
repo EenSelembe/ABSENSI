@@ -3,19 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Absensi</title>
+<title>Admin User</title>
 
 <style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:Arial,sans-serif;
-}
-
 body{
     background:#000;
     color:white;
+    font-family:Arial;
     padding:20px;
 }
 
@@ -27,48 +21,44 @@ body{
 .card{
     background:#151515;
     padding:20px;
-    border-radius:15px;
-    margin-bottom:20px;
-}
-
-h1{
-    text-align:center;
-    margin-bottom:20px;
-}
-
-h2{
+    border-radius:12px;
     margin-bottom:15px;
 }
 
 input{
     width:100%;
-    padding:12px;
-    margin-bottom:10px;
+    padding:10px;
+    margin:5px 0;
+    border-radius:8px;
     border:none;
-    border-radius:10px;
     background:#222;
     color:white;
 }
 
 button{
     width:100%;
-    padding:12px;
+    padding:10px;
     border:none;
-    border-radius:10px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.btn-add{
     background:#198754;
     color:white;
-    font-size:16px;
-    font-weight:bold;
-    cursor:pointer;
 }
 
-button:hover{
-    opacity:.9;
+.btn-del{
+    background:#dc3545;
+    margin-top:5px;
 }
 
-#status{
-    margin-top:15px;
-    text-align:center;
+.user{
+    background:#222;
+    padding:10px;
+    margin-top:10px;
+    border-radius:8px;
 }
 </style>
 </head>
@@ -78,19 +68,20 @@ button:hover{
 <div class="container">
 
 <div class="card">
+    <h2>Tambah Akun</h2>
 
-<h1>DASHBOARD ADMIN</h1>
+    <input type="text" id="nama" placeholder="Nama">
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
 
-<h2>Tambah Karyawan</h2>
+    <button class="btn-add" onclick="tambahUser()">TAMBAH</button>
 
-<input type="text" id="nama" placeholder="Nama Lengkap">
-<input type="text" id="username" placeholder="Username">
-<input type="password" id="password" placeholder="Password Awal">
+    <div id="status"></div>
+</div>
 
-<button onclick="buatAkun()">BUAT AKUN</button>
-
-<div id="status"></div>
-
+<div class="card">
+    <h2>Daftar Akun</h2>
+    <div id="listUser"></div>
 </div>
 
 </div>
@@ -98,8 +89,14 @@ button:hover{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword } 
-from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    getDocs, 
+    deleteDoc, 
+    doc 
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDGArMeFqbZ95XXbdQV_7IDUzfii9k2HG0",
@@ -111,40 +108,74 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+const db = getFirestore(app);
 
-window.buatAkun = async function(){
+/* TAMBAH USER */
+window.tambahUser = async function(){
 
-    const nama = document.getElementById("nama").value.trim();
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value.trim();
-    const status = document.getElementById("status");
+    let nama = document.getElementById("nama").value;
+    let username = document.getElementById("username").value;
+    let password = document.getElementById("password").value;
 
     if(!nama || !username || !password){
-        status.innerHTML = "❌ Lengkapi semua data";
+        alert("Lengkapi data");
         return;
     }
 
-    const email = username + "@spbu.tap";
+    await addDoc(collection(db,"users"),{
+        nama,
+        username,
+        password,
+        createdAt: new Date()
+    });
 
-    try {
+    document.getElementById("status").innerText = "Akun berhasil dibuat";
 
-        await createUserWithEmailAndPassword(auth, email, password);
+    loadUser();
+}
 
-        status.innerHTML = `
-            ✅ Akun berhasil dibuat<br><br>
-            Nama: ${nama}<br>
-            Email: ${email}
+/* LOAD USER */
+async function loadUser(){
+
+    let list = document.getElementById("listUser");
+    list.innerHTML = "Loading...";
+
+    let snap = await getDocs(collection(db,"users"));
+
+    list.innerHTML = "";
+
+    snap.forEach((d)=>{
+
+        let u = d.data();
+
+        list.innerHTML += `
+            <div class="user">
+
+                <b>${u.nama}</b><br>
+                Username: ${u.username}<br>
+
+                <button class="btn-del" onclick="hapusUser('${d.id}')">
+                    HAPUS
+                </button>
+
+            </div>
         `;
+    });
+}
 
-        document.getElementById("nama").value = "";
-        document.getElementById("username").value = "";
-        document.getElementById("password").value = "";
+/* HAPUS USER */
+window.hapusUser = async function(id){
 
-    } catch(error){
-        status.innerHTML = "❌ " + error.message;
+    if(confirm("Hapus akun ini?")){
+
+        await deleteDoc(doc(db,"users",id));
+
+        loadUser();
     }
 }
+
+/* INIT */
+loadUser();
 
 </script>
 
