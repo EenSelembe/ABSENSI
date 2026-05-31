@@ -63,6 +63,7 @@ button:hover{
 }
 </style>
 </head>
+
 <body>
 
 <div class="login-box">
@@ -78,21 +79,17 @@ button:hover{
 
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-import {
-getAuth,
-signInWithEmailAndPassword,
-onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "API_KEY_ANDA",
-  authDomain: "PROJECT_ID.firebaseapp.com",
-  projectId: "PROJECT_ID",
-  storageBucket: "PROJECT_ID.appspot.com",
-  messagingSenderId: "SENDER_ID",
-  appId: "APP_ID"
+    apiKey: "AIzaSyDGArMeFqbZ95XXbdQV_7IDUzfii9k2HG0",
+    authDomain: "absensi-2fed9.firebaseapp.com",
+    projectId: "absensi-2fed9",
+    storageBucket: "absensi-2fed9.appspot.com",
+    messagingSenderId: "967198693925",
+    appId: "1:967198693925:web:ad0445a7451d9afe2c7dcc"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -104,34 +101,29 @@ window.login = async function(){
     const password = document.getElementById("password").value;
     const status = document.getElementById("status");
 
-    try{
+    if(!email || !password){
+        status.innerHTML = "❌ Email dan password wajib diisi";
+        return;
+    }
 
-        await signInWithEmailAndPassword(
-            auth,
-            email,
-            password
-        );
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
 
         status.innerHTML = "✅ Login berhasil";
 
         setTimeout(()=>{
-            window.location.href="dashboard.html";
+            window.location.href = "dashboard.html";
         },1000);
 
-    }catch(error){
-
-        status.innerHTML =
-        "❌ " + error.message;
-
+    } catch(error){
+        status.innerHTML = "❌ " + error.message;
     }
 }
 
-onAuthStateChanged(auth,(user)=>{
-
+onAuthStateChanged(auth, (user) => {
     if(user){
-        window.location.href="dashboard.html";
+        window.location.href = "dashboard.html";
     }
-
 });
 
 </script>
