@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login Absensi</title>
 
+<!-- 🔥 PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#007bff">
+
 <style>
 *{
     margin:0;
@@ -88,7 +92,7 @@ import {
     onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
-/* FIREBASE CONFIG */
+/* FIREBASE */
 const firebaseConfig = {
     apiKey: "AIzaSyDGArMeFqbZ95XXbdQV_7IDUzfii9k2HG0",
     authDomain: "absensi-2fed9.firebaseapp.com",
@@ -101,7 +105,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-/* LOGIN FUNCTION */
+/* LOGIN */
 window.login = async function(){
 
     const email = document.getElementById("email").value;
@@ -121,9 +125,8 @@ window.login = async function(){
 
         setTimeout(()=>{
 
-            // 🔥 ROLE CHECK ADMIN
             if(email === "admin@spbu.tap"){
-                window.location.href = "dasboard.html";
+                window.location.href = "dasboard.html"; // ✔ SESUAI PUNYAMU
             } else {
                 window.location.href = "absen.html";
             }
@@ -141,7 +144,7 @@ onAuthStateChanged(auth,(user)=>{
     if(user){
 
         if(user.email === "admin@spbu.tap"){
-            window.location.href = "dasboard.html";
+            window.location.href = "dasboard.html"; // ✔ SESUAI PUNYAMU
         } else {
             window.location.href = "absen.html";
         }
@@ -150,6 +153,13 @@ onAuthStateChanged(auth,(user)=>{
 
 });
 
+</script>
+
+<!-- SERVICE WORKER -->
+<script>
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js");
+}
 </script>
 
 </body>
