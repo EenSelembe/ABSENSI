@@ -86,7 +86,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/fireba
 import { getAuth, signOut, onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
-import { getFirestore, collection, getDocs, query, orderBy } 
+import { getFirestore, collection, getDocs } 
 from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -121,32 +121,49 @@ async function loadData(){
     const container = document.getElementById("listAbsensi");
     container.innerHTML = "Loading...";
 
-    const q = query(collection(db, "absensi"), orderBy("timestamp", "desc"));
-    const snap = await getDocs(q);
+    try {
 
-    container.innerHTML = "";
+        const snap = await getDocs(collection(db, "absensi"));
 
-    snap.forEach(doc=>{
+        container.innerHTML = "";
 
-        let data = doc.data();
+        if(snap.empty){
+            container.innerHTML = "<p>Belum ada data absensi</p>";
+            return;
+        }
 
-        container.innerHTML += `
-            <div class="card">
+        snap.forEach(doc=>{
 
-                <p><b>Email:</b> ${data.email}</p>
+            let data = doc.data();
 
-                <p><b>Lama Kerja:</b> 
-                    <span class="badge">${data.waktuKerja}</span>
-                </p>
+            container.innerHTML += `
+                <div class="card">
 
-                <p><b>Status:</b> ${data.status}</p>
+                    <p><b>Nama:</b> ${data.nama}</p>
 
-                <p><b>Waktu:</b> ${new Date(data.timestamp.seconds * 1000).toLocaleString()}</p>
+                    <p><b>Tanggal:</b> ${data.tanggal}</p>
 
-            </div>
-        `;
-    });
+                    <p><b>Hari:</b> ${data.hari}</p>
 
+                    <p><b>Jam Masuk:</b> ${data.jamMasuk || '-'}</p>
+
+                    <p><b>Jam Pulang:</b> ${data.jamPulang || '-'}</p>
+
+                    <p><b>Total Kerja:</b> 
+                        <span class="badge">${data.totalKerja || '-'}</span>
+                    </p>
+
+                    <p><b>Lokasi Masuk:</b> ${data.lokasiMasuk || '-'}</p>
+
+                    <p><b>Lokasi Pulang:</b> ${data.lokasiPulang || '-'}</p>
+
+                </div>
+            `;
+        });
+
+    } catch(error){
+        container.innerHTML = "❌ Error: " + error.message;
+    }
 }
 
 loadData();
