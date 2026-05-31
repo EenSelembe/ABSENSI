@@ -91,10 +91,16 @@ button{
     color:white;
 }
 
+.btn-logout{
+    background:#6c757d;
+    color:white;
+}
+
 #hasil{
     margin-top:20px;
 }
 
+/* popup */
 .popup{
     display:none;
     position:fixed;
@@ -113,14 +119,6 @@ button{
     padding:20px;
     border-radius:15px;
     text-align:center;
-}
-
-.popup-content h3{
-    margin-bottom:15px;
-}
-
-.popup-content p{
-    margin-bottom:15px;
 }
 
 textarea{
@@ -161,6 +159,7 @@ textarea{
 }
 </style>
 </head>
+
 <body>
 
 <div class="container">
@@ -170,313 +169,164 @@ textarea{
 <h1>ABSENSI SPBU</h1>
 
 <div class="status-box">
-    <div class="status-title">
-        Status Hari Ini
-    </div>
-
-    <div id="statusHari" class="status-text">
-        ⚪ Belum Absen
-    </div>
+    <div class="status-title">Status Hari Ini</div>
+    <div id="statusHari" class="status-text">⚪ Belum Absen</div>
 </div>
 
 <div class="info">
     Pastikan Anda sudah berada di lokasi SPBU sebelum melakukan absensi.
 </div>
 
-<button
-    id="btnAbsen"
-    class="btn-absen"
-    onclick="mulaiAbsen()">
+<button id="btnAbsen" class="btn-absen" onclick="mulaiAbsen()">
     ABSEN MASUK
 </button>
 
-<button
-    class="btn-ijin"
-    onclick="bukaIjin()">
+<button class="btn-ijin" onclick="bukaIjin()">
     IJIN
 </button>
 
-<button
-    class="btn-sakit"
-    onclick="bukaSakit()">
+<button class="btn-sakit" onclick="bukaSakit()">
     SAKIT
+</button>
+
+<!-- LOGOUT -->
+<button class="btn-logout" onclick="logout()">
+    LOGOUT
 </button>
 
 <div id="hasil"></div>
 
 </div>
-
 </div>
 
 <!-- POPUP ABSEN -->
-
 <div id="popupAbsen" class="popup">
-
 <div class="popup-content">
+<h3 id="judulPopup">ABSEN MASUK</h3>
+<p id="isiPopup">Apakah Anda sudah berada di SPBU?</p>
 
-<h3 id="judulPopup">
-ABSEN MASUK
-</h3>
-
-<p id="isiPopup">
-Apakah Anda sudah berada di SPBU?
-</p>
-
-<button
-    class="btn-yes"
-    onclick="prosesAbsen()">
-    YA
-</button>
-
-<button
-    class="btn-no"
-    onclick="tutupPopup()">
-    BELUM
-</button>
-
+<button class="btn-yes" onclick="prosesAbsen()">YA</button>
+<button class="btn-no" onclick="tutupPopup()">BELUM</button>
 </div>
-
 </div>
 
 <!-- POPUP IJIN -->
-
 <div id="popupIjin" class="popup">
-
 <div class="popup-content">
-
 <h3>KETERANGAN IJIN</h3>
-
-<textarea
-    id="ketIjin"
-    placeholder="Tuliskan alasan ijin...">
-</textarea>
-
-<button
-    class="btn-yes"
-    onclick="kirimIjin()">
-    KIRIM
-</button>
-
-<button
-    class="btn-no"
-    onclick="tutupIjin()">
-    BATAL
-</button>
-
+<textarea id="ketIjin"></textarea>
+<button class="btn-yes" onclick="kirimIjin()">KIRIM</button>
+<button class="btn-no" onclick="tutupIjin()">BATAL</button>
 </div>
-
 </div>
 
 <!-- POPUP SAKIT -->
-
 <div id="popupSakit" class="popup">
-
 <div class="popup-content">
-
 <h3>KETERANGAN SAKIT</h3>
-
-<textarea
-    id="ketSakit"
-    placeholder="Tuliskan keterangan sakit...">
-</textarea>
-
-<button
-    class="btn-yes"
-    onclick="kirimSakit()">
-    KIRIM
-</button>
-
-<button
-    class="btn-no"
-    onclick="tutupSakit()">
-    BATAL
-</button>
-
+<textarea id="ketSakit"></textarea>
+<button class="btn-yes" onclick="kirimSakit()">KIRIM</button>
+<button class="btn-no" onclick="tutupSakit()">BATAL</button>
+</div>
 </div>
 
-</div>
+<script type="module">
 
-<script>
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, signOut, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
+const firebaseConfig = {
+    apiKey: "AIzaSyDGArMeFqbZ95XXbdQV_7IDUzfii9k2HG0",
+    authDomain: "absensi-2fed9.firebaseapp.com",
+    projectId: "absensi-2fed9",
+    storageBucket: "absensi-2fed9.appspot.com",
+    messagingSenderId: "967198693925",
+    appId: "1:967198693925:web:ad0445a7451d9afe2c7dcc"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+/* PROTECT PAGE */
+onAuthStateChanged(auth, (user) => {
+    if(!user){
+        window.location.href = "index.html";
+    }
+});
+
+/* LOGOUT */
+window.logout = async function(){
+    await signOut(auth);
+    window.location.href = "index.html";
+}
+
+/* ABSEN SYSTEM */
 let statusAbsen = "masuk";
 
-function mulaiAbsen(){
-
-    document.getElementById("popupAbsen").style.display =
-    "flex";
+window.mulaiAbsen = function(){
+    document.getElementById("popupAbsen").style.display = "flex";
 
     if(statusAbsen==="masuk"){
-
-        document.getElementById("judulPopup").innerText =
-        "ABSEN MASUK";
-
-        document.getElementById("isiPopup").innerText =
-        "Apakah Anda sudah berada di SPBU?";
-
+        document.getElementById("judulPopup").innerText = "ABSEN MASUK";
+        document.getElementById("isiPopup").innerText = "Apakah Anda sudah berada di SPBU?";
     }else{
-
-        document.getElementById("judulPopup").innerText =
-        "ABSEN PULANG";
-
-        document.getElementById("isiPopup").innerText =
-        "Apakah Anda sudah selesai bekerja?";
-
+        document.getElementById("judulPopup").innerText = "ABSEN PULANG";
+        document.getElementById("isiPopup").innerText = "Apakah Anda sudah selesai bekerja?";
     }
-
 }
 
-function tutupPopup(){
-
-    document.getElementById("popupAbsen").style.display =
-    "none";
-
+window.tutupPopup = function(){
+    document.getElementById("popupAbsen").style.display = "none";
 }
 
-function prosesAbsen(){
+window.prosesAbsen = function(){
 
-    document.getElementById("popupAbsen").style.display =
-    "none";
+    document.getElementById("popupAbsen").style.display = "none";
 
-    const hasil =
-    document.getElementById("hasil");
+    const hasil = document.getElementById("hasil");
 
-    hasil.innerHTML = `
-        <div class="loader"></div>
-        <p>Memproses absensi...</p>
-    `;
+    hasil.innerHTML = `<div class="loader"></div><p>Memproses...</p>`;
 
     setTimeout(()=>{
 
         if(statusAbsen==="masuk"){
 
-            document.getElementById("statusHari").innerHTML =
-            "🟢 Sedang Bekerja";
-
-            document.getElementById("btnAbsen").innerText =
-            "ABSEN PULANG";
-
-            hasil.innerHTML = `
-                <h3 style="color:#00ff88">
-                    ✅ ABSEN MASUK BERHASIL
-                </h3>
-                <br>
-                <p>
-                    Silakan lakukan absen pulang saat selesai bekerja.
-                </p>
-            `;
+            document.getElementById("statusHari").innerHTML = "🟢 Sedang Bekerja";
+            document.getElementById("btnAbsen").innerText = "ABSEN PULANG";
 
             statusAbsen = "pulang";
 
+            hasil.innerHTML = "<h3>✅ ABSEN MASUK BERHASIL</h3>";
+
         }else{
 
-            document.getElementById("statusHari").innerHTML =
-            "✅ Selesai";
+            document.getElementById("statusHari").innerHTML = "✅ Selesai";
+            document.getElementById("btnAbsen").innerText = "SELESAI";
+            document.getElementById("btnAbsen").disabled = true;
 
-            document.getElementById("btnAbsen").innerText =
-            "ABSENSI SELESAI";
-
-            document.getElementById("btnAbsen").disabled =
-            true;
-
-            document.getElementById("btnAbsen").style.background =
-            "#555";
-
-            hasil.innerHTML = `
-                <h3 style="color:#00ff88">
-                    ✅ ABSEN PULANG BERHASIL
-                </h3>
-                <br>
-                <p>
-                    Terima kasih. Selamat beristirahat.
-                </p>
-            `;
+            hasil.innerHTML = "<h3>✅ ABSEN PULANG BERHASIL</h3>";
 
         }
 
-    },3000);
-
+    },2000);
 }
 
-function bukaIjin(){
-    document.getElementById("popupIjin").style.display =
-    "flex";
-}
+/* IJIN & SAKIT (tetap UI saja) */
+window.bukaIjin = ()=> document.getElementById("popupIjin").style.display="flex";
+window.tutupIjin = ()=> document.getElementById("popupIjin").style.display="none";
 
-function tutupIjin(){
-    document.getElementById("popupIjin").style.display =
-    "none";
-}
-
-function kirimIjin(){
-
-    const isi =
-    document.getElementById("ketIjin").value.trim();
-
-    if(isi===""){
-        alert("Silakan isi keterangan ijin.");
-        return;
-    }
-
+window.kirimIjin = function(){
+    alert("Ijin terkirim");
     tutupIjin();
-
-    document.getElementById("hasil").innerHTML = `
-        <div class="loader"></div>
-        <p>Mengirim permohonan ijin...</p>
-    `;
-
-    setTimeout(()=>{
-
-        document.getElementById("hasil").innerHTML = `
-            <h3 style="color:#ffc107">
-                📝 PERMOHONAN IJIN BERHASIL DIKIRIM
-            </h3>
-        `;
-
-        document.getElementById("ketIjin").value = "";
-
-    },3000);
-
 }
 
-function bukaSakit(){
-    document.getElementById("popupSakit").style.display =
-    "flex";
-}
+window.bukaSakit = ()=> document.getElementById("popupSakit").style.display="flex";
+window.tutupSakit = ()=> document.getElementById("popupSakit").style.display="none";
 
-function tutupSakit(){
-    document.getElementById("popupSakit").style.display =
-    "none";
-}
-
-function kirimSakit(){
-
-    const isi =
-    document.getElementById("ketSakit").value.trim();
-
-    if(isi===""){
-        alert("Silakan isi keterangan sakit.");
-        return;
-    }
-
+window.kirimSakit = function(){
+    alert("Laporan sakit terkirim");
     tutupSakit();
-
-    document.getElementById("hasil").innerHTML = `
-        <div class="loader"></div>
-        <p>Mengirim laporan sakit...</p>
-    `;
-
-    setTimeout(()=>{
-
-        document.getElementById("hasil").innerHTML = `
-            <h3 style="color:#ff6666">
-                🤒 LAPORAN SAKIT BERHASIL DIKIRIM
-            </h3>
-        `;
-
-        document.getElementById("ketSakit").value = "";
-
-    },3000);
-
 }
 
 </script>
