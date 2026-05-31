@@ -2,10 +2,9 @@ self.addEventListener("install", e=>{
     e.waitUntil(
         caches.open("absensi-cache").then(cache=>{
             return cache.addAll([
-                "/",
-                "/index.html",
-                "/absen.html",
-                "/manifest.json"
+                index.html",
+                absen.html",
+                manifest.json"
             ]);
         })
     );
