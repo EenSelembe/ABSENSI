@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin User</title>
+<title>Admin User Firebase</title>
 
 <style>
 body{
@@ -89,13 +89,13 @@ button{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    getDocs, 
-    deleteDoc, 
-    doc 
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -163,10 +163,10 @@ async function loadUser(){
     });
 }
 
-/* HAPUS USER */
+/* HAPUS USER (FIREBASE) */
 window.hapusUser = async function(id){
 
-    if(confirm("Hapus akun ini?")){
+    if(confirm("Yakin hapus akun ini?")){
 
         await deleteDoc(doc(db,"users",id));
 
