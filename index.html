@@ -67,6 +67,7 @@ button:hover{
 <body>
 
 <div class="login-box">
+
     <h2>Login Absensi</h2>
 
     <input type="email" id="email" placeholder="Email">
@@ -75,14 +76,19 @@ button:hover{
     <button onclick="login()">Login</button>
 
     <div id="status"></div>
+
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } 
-from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { 
+    getAuth, 
+    signInWithEmailAndPassword,
+    onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
+/* FIREBASE CONFIG */
 const firebaseConfig = {
     apiKey: "AIzaSyDGArMeFqbZ95XXbdQV_7IDUzfii9k2HG0",
     authDomain: "absensi-2fed9.firebaseapp.com",
@@ -95,6 +101,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
+/* LOGIN FUNCTION */
 window.login = async function(){
 
     const email = document.getElementById("email").value;
@@ -107,12 +114,20 @@ window.login = async function(){
     }
 
     try {
+
         await signInWithEmailAndPassword(auth, email, password);
 
         status.innerHTML = "✅ Login berhasil";
 
         setTimeout(()=>{
-            window.location.href = "absen.html";
+
+            // 🔥 ROLE CHECK ADMIN
+            if(email === "admin@spbu.tap"){
+                window.location.href = "dashboard.html";
+            } else {
+                window.location.href = "absen.html";
+            }
+
         },1000);
 
     } catch(error){
@@ -120,10 +135,19 @@ window.login = async function(){
     }
 }
 
-onAuthStateChanged(auth, (user) => {
+/* AUTO LOGIN */
+onAuthStateChanged(auth,(user)=>{
+
     if(user){
-        window.location.href = "absen.html";
+
+        if(user.email === "admin@spbu.tap"){
+            window.location.href = "dashboard.html";
+        } else {
+            window.location.href = "absen.html";
+        }
+
     }
+
 });
 
 </script>
