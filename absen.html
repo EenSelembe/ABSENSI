@@ -99,7 +99,7 @@ button{
 <h1>ABSENSI SPBU</h1>
 
 <div class="status-box">
-    <div class="status-title">Status</div>
+    <div class="status-title">Status Hari Ini</div>
     <div id="statusHari" class="status-text">Belum Absen</div>
 </div>
 
@@ -119,11 +119,19 @@ button{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } 
-from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { 
+    getAuth, 
+    onAuthStateChanged, 
+    signOut 
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
-import { getFirestore, doc, setDoc, updateDoc } 
-from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { 
+    getFirestore, 
+    doc, 
+    setDoc, 
+    getDoc, 
+    updateDoc 
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 /* FIREBASE */
 const firebaseConfig = {
@@ -139,7 +147,19 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* SPBU CENTER */
+/* USER */
+let userId = "";
+let namaUser = "";
+
+/* TIMER */
+let timerInterval;
+let startTime;
+let elapsed = 0;
+
+/* STATUS */
+let statusAbsen = "masuk";
+
+/* SPBU (opsional kalau mau GPS nanti) */
 const SPBU = {
     nama: "SPBU 64.788.07",
     lat: -1.576047,
@@ -148,37 +168,35 @@ const SPBU = {
 
 const MAX_RADIUS = 50;
 
-let userId = "";
-let namaUser = "";
-let startTime;
-let elapsed = 0;
-let timerInterval;
-let statusAbsen = "masuk";
-
 /* LOGIN CHECK */
 onAuthStateChanged(auth,(user)=>{
+
     if(!user){
-        window.location.href="index.html";
+        window.location.href = "index.html";
     }else{
         userId = user.uid;
         namaUser = user.email.split("@")[0];
+
+        cekStatus(); // 🔥 penting
     }
 });
 
 /* LOGOUT */
 window.logout = async function(){
     await signOut(auth);
-    window.location.href="index.html";
+    window.location.href = "index.html";
 }
 
 /* TIMER */
-function startTimer(){
-    startTime = Date.now() - elapsed;
+function startTimer(fromTime){
+
+    let start = fromTime ? new Date(fromTime).getTime() : Date.now();
 
     timerInterval = setInterval(()=>{
-        elapsed = Date.now() - startTime;
 
-        let sec = Math.floor(elapsed/1000);
+        let diff = Date.now() - start;
+
+        let sec = Math.floor(diff/1000);
         let h = Math.floor(sec/3600);
         let m = Math.floor((sec%3600)/60);
         let s = sec%60;
@@ -191,33 +209,87 @@ function startTimer(){
     },1000);
 }
 
-function stopTimer(){
-    clearInterval(timerInterval);
+/* CEK STATUS FIREBASE */
+async function cekStatus(){
+
+    let tanggal = new Date().toISOString().split("T")[0];
+    let docId = userId + "_" + tanggal;
+
+    let snap = await getDoc(doc(db,"absensi",docId));
+
+    if(!snap.exists()){
+        statusAbsen = "masuk";
+        return;
+    }
+
+    let data = snap.data();
+
+    if(data.jamPulang){
+
+        statusAbsen = "selesai";
+
+        document.getElementById("btnAbsen").disabled = true;
+        document.getElementById("btnAbsen").innerText = "SUDAH SELESAI";
+        document.getElementById("statusHari").innerText = "Selesai";
+
+    }else if(data.jamMasuk){
+
+        statusAbsen = "pulang";
+
+        document.getElementById("btnAbsen").innerText = "ABSEN PULANG";
+        document.getElementById("statusHari").innerText = "Sedang Bekerja";
+
+        startTimer(data.jamMasuk);
+    }
+}
+
+/* GET GPS SEDERHANA */
+function getLokasi(){
+    return new Promise((resolve,reject)=>{
+
+        navigator.geolocation.getCurrentPosition(pos=>{
+
+            resolve({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude
+            });
+
+        },reject,{
+            enableHighAccuracy:true
+        });
+
+    });
 }
 
 /* HITUNG JARAK */
-function hitungJarak(lat1, lon1, lat2, lon2){
+function hitungJarak(lat1,lon1,lat2,lon2){
 
     const R = 6371e3;
 
     const φ1 = lat1 * Math.PI/180;
     const φ2 = lat2 * Math.PI/180;
 
-    const Δφ = (lat2 - lat1) * Math.PI/180;
-    const Δλ = (lon2 - lon1) * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
 
     const a =
         Math.sin(Δφ/2)**2 +
         Math.cos(φ1)*Math.cos(φ2)*
         Math.sin(Δλ/2)**2;
 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const c = 2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 
-    return R * c;
+    return R*c;
 }
 
-/* REVERSE MAPS */
-async function getNamaMap(lat,lng){
+/* GET NAMA LOKASI */
+async function getNamaLokasi(lat,lng){
+
+    let jarak = hitungJarak(lat,lng,SPBU.lat,SPBU.lng);
+
+    if(jarak <= MAX_RADIUS){
+        return SPBU.nama;
+    }
 
     let res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
@@ -226,79 +298,39 @@ async function getNamaMap(lat,lng){
     let data = await res.json();
 
     let full = data.display_name || "Lokasi tidak diketahui";
-    let parts = full.split(",");
-
-    return parts.slice(0,3).join(",");
-}
-
-/* LOGIKA LOKASI FINAL */
-async function getLokasiFinal(lat,lng){
-
-    let jarak = hitungJarak(lat,lng,SPBU.lat,SPBU.lng);
-
-    if(jarak <= MAX_RADIUS){
-        return SPBU.nama;
-    }else{
-        return await getNamaMap(lat,lng);
-    }
-}
-
-/* GET GPS */
-function getLokasi(){
-    return new Promise((resolve,reject)=>{
-
-        navigator.geolocation.getCurrentPosition(async(pos)=>{
-
-            resolve({
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude
-            });
-
-        },reject,{
-            enableHighAccuracy:true,
-            timeout:10000,
-            maximumAge:0
-        });
-
-    });
+    return full.split(",").slice(0,3).join(",");
 }
 
 /* ABSEN MASUK */
 async function absenMasuk(){
 
     let lokasi = await getLokasi();
-    let namaLokasi = await getLokasiFinal(lokasi.lat,lokasi.lng);
+    let namaLokasi = await getNamaLokasi(lokasi.lat,lokasi.lng);
 
     let now = new Date();
-
     let tanggal = now.toISOString().split("T")[0];
-    let hari = now.toLocaleDateString("id-ID",{weekday:"long"});
-    let jamMasuk = now.toTimeString().split(" ")[0];
 
     await setDoc(doc(db,"absensi",userId+"_"+tanggal),{
         nama:namaUser,
         tanggal,
-        hari,
-        jamMasuk,
-        lokasiMasuk:namaLokasi
+        jamMasuk: now.toISOString(),
+        lokasiMasuk: namaLokasi
     });
 }
 
 /* ABSEN PULANG */
-async function absenPulang(total){
+async function absenPulang(){
 
     let lokasi = await getLokasi();
-    let namaLokasi = await getLokasiFinal(lokasi.lat,lokasi.lng);
+    let namaLokasi = await getNamaLokasi(lokasi.lat,lokasi.lng);
 
     let now = new Date();
-
     let tanggal = now.toISOString().split("T")[0];
-    let jamPulang = now.toTimeString().split(" ")[0];
 
     await updateDoc(doc(db,"absensi",userId+"_"+tanggal),{
-        jamPulang,
-        totalKerja: total,
-        lokasiPulang: namaLokasi
+        jamPulang: now.toISOString(),
+        lokasiPulang: namaLokasi,
+        totalKerja: document.getElementById("timer").innerText
     });
 }
 
@@ -314,26 +346,27 @@ window.mulaiAbsen = async function(){
 
         startTimer();
 
-        document.getElementById("statusHari").innerText="Sedang Bekerja";
-        document.getElementById("btnAbsen").innerText="ABSEN PULANG";
+        statusAbsen = "pulang";
 
-        statusAbsen="pulang";
+        document.getElementById("btnAbsen").innerText = "ABSEN PULANG";
+        document.getElementById("statusHari").innerText = "Sedang Bekerja";
 
-        document.getElementById("hasil").innerHTML="Absen masuk berhasil";
+        document.getElementById("hasil").innerText = "Absen masuk berhasil";
 
     }else{
 
-        stopTimer();
+        await absenPulang();
 
-        let total = document.getElementById("timer").innerText;
+        clearInterval(timerInterval);
 
-        await absenPulang(total);
+        statusAbsen = "selesai";
 
-        document.getElementById("statusHari").innerText="Selesai";
-        document.getElementById("btnAbsen").disabled=true;
+        document.getElementById("btnAbsen").disabled = true;
+        document.getElementById("btnAbsen").innerText = "SELESAI";
+        document.getElementById("statusHari").innerText = "Selesai";
 
-        document.getElementById("hasil").innerHTML=
-        "Absen pulang berhasil. Total: "+total;
+        document.getElementById("hasil").innerText =
+        "Absen pulang berhasil";
     }
 }
 
