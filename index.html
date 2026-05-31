@@ -123,7 +123,7 @@ window.login = async function(){
 
             // 🔥 ROLE CHECK ADMIN
             if(email === "admin@spbu.tap"){
-                window.location.href = "dashboard.html";
+                window.location.href = "dasboard.html";
             } else {
                 window.location.href = "absen.html";
             }
@@ -141,7 +141,7 @@ onAuthStateChanged(auth,(user)=>{
     if(user){
 
         if(user.email === "admin@spbu.tap"){
-            window.location.href = "dashboard.html";
+            window.location.href = "dasboard.html";
         } else {
             window.location.href = "absen.html";
         }
