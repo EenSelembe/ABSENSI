@@ -25,30 +25,30 @@ body{
 
 .container{
     width:100%;
-    max-width:400px;
+    max-width:420px;
 }
 
 .card{
     background:#151515;
+    padding:20px;
     border-radius:15px;
-    padding:25px;
     text-align:center;
 }
 
 h1{
-    margin-bottom:15px;
+    margin-bottom:10px;
 }
 
 .status-box{
     background:#222;
-    padding:12px;
+    padding:10px;
     border-radius:10px;
     margin-bottom:10px;
 }
 
 .status-title{
-    color:#999;
-    font-size:13px;
+    font-size:12px;
+    color:#aaa;
 }
 
 .status-text{
@@ -61,19 +61,16 @@ button{
     padding:12px;
     border:none;
     border-radius:10px;
-    font-size:15px;
+    margin-top:10px;
     font-weight:bold;
     cursor:pointer;
-    margin-top:10px;
 }
 
 .btn-absen{ background:#198754; color:white; }
-.btn-ijin{ background:#ffc107; color:black; }
-.btn-sakit{ background:#dc3545; color:white; }
-.btn-logout{ background:#6c757d; color:white; }
+.btn-logout{ background:#dc3545; color:white; }
 
 #hasil{
-    margin-top:15px;
+    margin-top:10px;
     font-size:14px;
     color:#ddd;
 }
@@ -112,8 +109,6 @@ button{
 </div>
 
 <button class="btn-absen" id="btnAbsen" onclick="mulaiAbsen()">ABSEN MASUK</button>
-<button class="btn-ijin">IJIN</button>
-<button class="btn-sakit">SAKIT</button>
 <button class="btn-logout" onclick="logout()">LOGOUT</button>
 
 <div id="hasil"></div>
@@ -130,6 +125,7 @@ from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, updateDoc } 
 from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
+/* FIREBASE */
 const firebaseConfig = {
     apiKey: "AIzaSyDGArMeFqbZ95XXbdQV_7IDUzfii9k2HG0",
     authDomain: "absensi-2fed9.firebaseapp.com",
@@ -143,9 +139,17 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+/* SPBU CENTER */
+const SPBU = {
+    nama: "SPBU 64.788.07",
+    lat: -1.576047,
+    lng: 110.352761
+};
+
+const MAX_RADIUS = 50;
+
 let userId = "";
 let namaUser = "";
-
 let startTime;
 let elapsed = 0;
 let timerInterval;
@@ -191,29 +195,71 @@ function stopTimer(){
     clearInterval(timerInterval);
 }
 
-/* LOKASI SINGKAT */
+/* HITUNG JARAK */
+function hitungJarak(lat1, lon1, lat2, lon2){
+
+    const R = 6371e3;
+
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+
+    const Δφ = (lat2 - lat1) * Math.PI/180;
+    const Δλ = (lon2 - lon1) * Math.PI/180;
+
+    const a =
+        Math.sin(Δφ/2)**2 +
+        Math.cos(φ1)*Math.cos(φ2)*
+        Math.sin(Δλ/2)**2;
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
+}
+
+/* REVERSE MAPS */
+async function getNamaMap(lat,lng){
+
+    let res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+    );
+
+    let data = await res.json();
+
+    let full = data.display_name || "Lokasi tidak diketahui";
+    let parts = full.split(",");
+
+    return parts.slice(0,3).join(",");
+}
+
+/* LOGIKA LOKASI FINAL */
+async function getLokasiFinal(lat,lng){
+
+    let jarak = hitungJarak(lat,lng,SPBU.lat,SPBU.lng);
+
+    if(jarak <= MAX_RADIUS){
+        return SPBU.nama;
+    }else{
+        return await getNamaMap(lat,lng);
+    }
+}
+
+/* GET GPS */
 function getLokasi(){
     return new Promise((resolve,reject)=>{
+
         navigator.geolocation.getCurrentPosition(async(pos)=>{
 
-            let lat = pos.coords.latitude;
-            let lng = pos.coords.longitude;
-
-            let res = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
-            );
-
-            let data = await res.json();
-
-            let full = data.display_name || "Lokasi tidak ditemukan";
-            let parts = full.split(",");
-            let singkat = parts.slice(0,3).join(",");
-
             resolve({
-                nama: singkat
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude
             });
 
-        },reject);
+        },reject,{
+            enableHighAccuracy:true,
+            timeout:10000,
+            maximumAge:0
+        });
+
     });
 }
 
@@ -221,18 +267,20 @@ function getLokasi(){
 async function absenMasuk(){
 
     let lokasi = await getLokasi();
+    let namaLokasi = await getLokasiFinal(lokasi.lat,lokasi.lng);
 
     let now = new Date();
+
     let tanggal = now.toISOString().split("T")[0];
     let hari = now.toLocaleDateString("id-ID",{weekday:"long"});
     let jamMasuk = now.toTimeString().split(" ")[0];
 
     await setDoc(doc(db,"absensi",userId+"_"+tanggal),{
         nama:namaUser,
-        tanggal:tanggal,
-        hari:hari,
-        jamMasuk:jamMasuk,
-        lokasiMasuk:lokasi.nama
+        tanggal,
+        hari,
+        jamMasuk,
+        lokasiMasuk:namaLokasi
     });
 }
 
@@ -240,19 +288,21 @@ async function absenMasuk(){
 async function absenPulang(total){
 
     let lokasi = await getLokasi();
+    let namaLokasi = await getLokasiFinal(lokasi.lat,lokasi.lng);
 
     let now = new Date();
+
     let tanggal = now.toISOString().split("T")[0];
     let jamPulang = now.toTimeString().split(" ")[0];
 
     await updateDoc(doc(db,"absensi",userId+"_"+tanggal),{
-        jamPulang:jamPulang,
-        totalKerja:total,
-        lokasiPulang:lokasi.nama
+        jamPulang,
+        totalKerja: total,
+        lokasiPulang: namaLokasi
     });
 }
 
-/* BUTTON ABSEN */
+/* BUTTON */
 window.mulaiAbsen = async function(){
 
     document.getElementById("hasil").innerHTML =
@@ -269,7 +319,7 @@ window.mulaiAbsen = async function(){
 
         statusAbsen="pulang";
 
-        document.getElementById("hasil").innerHTML="Absensi masuk berhasil";
+        document.getElementById("hasil").innerHTML="Absen masuk berhasil";
 
     }else{
 
@@ -283,7 +333,7 @@ window.mulaiAbsen = async function(){
         document.getElementById("btnAbsen").disabled=true;
 
         document.getElementById("hasil").innerHTML=
-        "Absensi pulang berhasil. Total: "+total;
+        "Absen pulang berhasil. Total: "+total;
     }
 }
 
