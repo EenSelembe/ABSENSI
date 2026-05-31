@@ -83,11 +83,21 @@ button{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getAuth, signOut, onAuthStateChanged } 
-from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { 
+    getAuth, 
+    signOut, 
+    onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
-import { getFirestore, collection, getDocs } 
-from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+import { 
+    getFirestore, 
+    collection, 
+    getDocs, 
+    query, 
+    orderBy,
+    deleteDoc,
+    doc
+} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDGArMeFqbZ95XXbdQV_7IDUzfii9k2HG0",
@@ -102,68 +112,82 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 🔒 proteksi halaman
-onAuthStateChanged(auth, (user)=>{
+/* PROTEKSI LOGIN */
+onAuthStateChanged(auth,(user)=>{
     if(!user){
         window.location.href = "index.html";
     }
 });
 
-// logout
+/* LOGOUT */
 window.logout = async function(){
     await signOut(auth);
     window.location.href = "index.html";
 }
 
-// ambil data absensi
+/* FORMAT JAM HH:MM */
+function formatJam(iso){
+
+    if(!iso) return "-";
+
+    return new Date(iso).toLocaleTimeString("id-ID",{
+        hour:"2-digit",
+        minute:"2-digit",
+        hour12:false
+    });
+}
+
+/* HAPUS DATA */
+window.hapusAbsensi = async function(id){
+
+    if(!confirm("Hapus data ini?")) return;
+
+    await deleteDoc(doc(db,"absensi",id));
+
+    loadData();
+}
+
+/* LOAD DATA */
 async function loadData(){
 
     const container = document.getElementById("listAbsensi");
     container.innerHTML = "Loading...";
 
-    try {
+    const q = query(collection(db,"absensi"), orderBy("tanggal","desc"));
+    const snap = await getDocs(q);
 
-        const snap = await getDocs(collection(db, "absensi"));
+    container.innerHTML = "";
 
-        container.innerHTML = "";
+    snap.forEach(d=>{
 
-        if(snap.empty){
-            container.innerHTML = "<p>Belum ada data absensi</p>";
-            return;
-        }
+        let data = d.data();
 
-        snap.forEach(doc=>{
+        container.innerHTML += `
+            <div class="card">
 
-            let data = doc.data();
+                <p><b>Nama:</b> ${data.nama || "-"}</p>
 
-            container.innerHTML += `
-                <div class="card">
+                <p><b>Tanggal:</b> ${data.tanggal || "-"}</p>
 
-                    <p><b>Nama:</b> ${data.nama}</p>
+                <p><b>Jam Masuk:</b> ${formatJam(data.jamMasuk)}</p>
 
-                    <p><b>Tanggal:</b> ${data.tanggal}</p>
+                <p><b>Jam Pulang:</b> ${formatJam(data.jamPulang)}</p>
 
-                    <p><b>Hari:</b> ${data.hari}</p>
+                <p><b>Lama Kerja:</b> 
+                    <span class="badge">${data.totalKerja || "-"}</span>
+                </p>
 
-                    <p><b>Jam Masuk:</b> ${data.jamMasuk || '-'}</p>
+                <p><b>Lokasi Masuk:</b> ${data.lokasiMasuk || "-"}</p>
 
-                    <p><b>Jam Pulang:</b> ${data.jamPulang || '-'}</p>
+                <p><b>Lokasi Pulang:</b> ${data.lokasiPulang || "-"}</p>
 
-                    <p><b>Total Kerja:</b> 
-                        <span class="badge">${data.totalKerja || '-'}</span>
-                    </p>
+                <button onclick="hapusAbsensi('${d.id}')">
+                    HAPUS
+                </button>
 
-                    <p><b>Lokasi Masuk:</b> ${data.lokasiMasuk || '-'}</p>
-
-                    <p><b>Lokasi Pulang:</b> ${data.lokasiPulang || '-'}</p>
-
-                </div>
-            `;
-        });
-
-    } catch(error){
-        container.innerHTML = "❌ Error: " + error.message;
-    }
+            </div>
+        `;
+    });
 }
 
 loadData();
