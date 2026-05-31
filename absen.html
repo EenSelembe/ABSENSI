@@ -6,82 +6,134 @@
 <title>Absensi SPBU</title>
 
 <style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
 body{
     background:#000;
-    color:white;
-    font-family:Arial;
+    color:#fff;
+    min-height:100vh;
     display:flex;
     justify-content:center;
     align-items:center;
-    height:100vh;
+    padding:20px;
+}
+
+.container{
+    width:100%;
+    max-width:420px;
 }
 
 .card{
     background:#151515;
     padding:20px;
-    border-radius:12px;
-    width:100%;
-    max-width:420px;
+    border-radius:15px;
     text-align:center;
+}
+
+h1{
+    margin-bottom:10px;
+}
+
+.status-box{
+    background:#222;
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:10px;
+}
+
+.status-title{
+    font-size:12px;
+    color:#aaa;
+}
+
+.status-text{
+    font-size:18px;
+    font-weight:bold;
 }
 
 button{
     width:100%;
     padding:12px;
-    margin-top:10px;
     border:none;
-    border-radius:8px;
+    border-radius:10px;
+    margin-top:10px;
     font-weight:bold;
     cursor:pointer;
 }
 
-.btn-absen{background:#198754;color:white;}
-.btn-logout{background:#dc3545;color:white;}
+.btn-absen{ background:#198754; color:white; }
+.btn-logout{ background:#dc3545; color:white; }
 
-#timer{
-    font-size:20px;
-    margin:10px 0;
+#hasil{
+    margin-top:10px;
+    font-size:14px;
+    color:#ddd;
+}
+
+.loader{
+    width:40px;
+    height:40px;
+    border:4px solid #333;
+    border-top:4px solid #00ff88;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+    margin:auto;
+}
+
+@keyframes spin{
+    to{transform:rotate(360deg);}
 }
 </style>
 </head>
 
 <body>
 
+<div class="container">
 <div class="card">
 
-<h2>ABSENSI SPBU</h2>
+<h1>ABSENSI SPBU</h1>
 
-<div id="status">Belum Absen</div>
+<div class="status-box">
+    <div class="status-title">Status Hari Ini</div>
+    <div id="statusHari" class="status-text">Belum Absen</div>
+</div>
 
-<div id="timer">00:00</div>
+<div class="status-box">
+    <div class="status-title">Timer Kerja</div>
+    <div id="timer" class="status-text">00:00:00</div>
+</div>
 
-<button id="btnAbsen" class="btn-absen" onclick="absen()">
+<button class="btn-absen" id="btnAbsen" onclick="mulaiAbsen()">
 ABSEN MASUK
 </button>
 
-<button id="btnLogout" class="btn-logout" onclick="logout()" disabled>
-LOGOUT
-</button>
+<button class="btn-logout" onclick="logout()">LOGOUT</button>
 
+<div id="hasil"></div>
+
+</div>
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { 
-    getAuth, 
-    signOut, 
-    onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut }
+from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
 import {
-    getFirestore,
-    doc,
-    setDoc,
-    getDoc,
-    updateDoc
+getFirestore,
+doc,
+setDoc,
+getDoc,
+updateDoc
 } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
+/* FIREBASE */
 const firebaseConfig = {
     apiKey: "AIzaSyDGArMeFqbZ95XXbdQV_7IDUzfii9k2HG0",
     authDomain: "absensi-2fed9.firebaseapp.com",
@@ -95,149 +147,233 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+/* USER */
 let uid = "";
-let status = "masuk";
-let startTime = null;
-let timer;
+let namaUser = "";
 
-let isWorking = false;
+/* TIMER */
+let timerInterval;
+let startTime;
+
+/* STATUS */
+let statusAbsen = "masuk";
+
+/* LOCK SYSTEM */
+let sessionLock = false;
+
+/* SPBU POINT */
+const SPBU = {
+    nama: "SPBU 64.788.07",
+    lat: -1.576047,
+    lng: 110.352761
+};
+
+const MAX_RADIUS = 50;
 
 /* LOGIN CHECK */
 onAuthStateChanged(auth,(user)=>{
+
     if(!user){
-        window.location.href = "index.html";
+        window.location.href="index.html";
     }else{
         uid = user.uid;
-        cekData();
+        namaUser = user.email.split("@")[0];
+
+        if(localStorage.getItem("working")==="true"){
+            sessionLock = true;
+        }
+
+        cekStatus();
     }
 });
-
-/* CEK DATA FIREBASE */
-async function cekData(){
-
-    let id = uid + "_" + new Date().toISOString().split("T")[0];
-
-    let snap = await getDoc(doc(db,"absensi",id));
-
-    if(snap.exists()){
-
-        let data = snap.data();
-
-        if(data.jamPulang){
-
-            status = "selesai";
-            document.getElementById("btnAbsen").disabled = true;
-            document.getElementById("btnAbsen").innerText = "SELESAI";
-
-        }else{
-
-            status = "pulang";
-            isWorking = true;
-
-            document.getElementById("btnAbsen").innerText = "ABSEN PULANG";
-            document.getElementById("btnLogout").disabled = true;
-
-            startTimer(data.jamMasuk);
-            lockPage();
-        }
-    }
-}
-
-/* TIMER */
-function startTimer(start){
-
-    startTime = new Date(start).getTime();
-
-    timer = setInterval(()=>{
-
-        let diff = Date.now() - startTime;
-
-        let m = Math.floor(diff/60000);
-        let h = Math.floor(m/60);
-        m = m % 60;
-
-        document.getElementById("timer").innerText =
-        `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-
-    },1000);
-}
-
-/* ABSEN */
-window.absen = async function(){
-
-    let id = uid + "_" + new Date().toISOString().split("T")[0];
-
-    if(status === "masuk"){
-
-        await setDoc(doc(db,"absensi",id),{
-            jamMasuk: new Date().toISOString()
-        });
-
-        status = "pulang";
-        isWorking = true;
-
-        document.getElementById("btnAbsen").innerText = "ABSEN PULANG";
-        document.getElementById("btnLogout").disabled = true;
-
-        startTimer(new Date().toISOString());
-
-        lockPage();
-
-    }else{
-
-        await updateDoc(doc(db,"absensi",id),{
-            jamPulang: new Date().toISOString()
-        });
-
-        status = "selesai";
-        isWorking = false;
-
-        clearInterval(timer);
-
-        document.getElementById("btnAbsen").disabled = true;
-        document.getElementById("btnAbsen").innerText = "SELESAI";
-
-        document.getElementById("btnLogout").disabled = false;
-
-        unlockPage();
-    }
-}
 
 /* LOGOUT */
 window.logout = async function(){
 
-    if(isWorking){
+    if(sessionLock || localStorage.getItem("working")==="true"){
         alert("Tidak bisa logout saat masih bekerja!");
         return;
     }
 
     await signOut(auth);
-    window.location.href = "index.html";
+    window.location.href="index.html";
 }
 
-/* BLOK BACK BUTTON */
+/* TIMER */
+function startTimer(start){
+
+    let base = new Date(start).getTime();
+
+    timerInterval = setInterval(()=>{
+
+        let diff = Date.now() - base;
+
+        let sec = Math.floor(diff/1000);
+        let h = Math.floor(sec/3600);
+        let m = Math.floor((sec%3600)/60);
+        let s = sec%60;
+
+        document.getElementById("timer").innerText =
+        String(h).padStart(2,'0')+":"+
+        String(m).padStart(2,'0')+":"+
+        String(s).padStart(2,'0');
+
+    },1000);
+}
+
+/* CEK STATUS */
+async function cekStatus(){
+
+    let tanggal = new Date().toISOString().split("T")[0];
+    let id = uid+"_"+tanggal;
+
+    let snap = await getDoc(doc(db,"absensi",id));
+
+    if(!snap.exists()) return;
+
+    let data = snap.data();
+
+    if(data.jamPulang){
+
+        statusAbsen = "selesai";
+        sessionLock = false;
+        localStorage.removeItem("working");
+
+        document.getElementById("btnAbsen").disabled = true;
+        document.getElementById("btnAbsen").innerText = "SELESAI";
+
+        document.getElementById("statusHari").innerText = "Selesai";
+
+    }else if(data.jamMasuk){
+
+        statusAbsen = "pulang";
+        sessionLock = true;
+        localStorage.setItem("working","true");
+
+        document.getElementById("btnAbsen").innerText = "ABSEN PULANG";
+        document.getElementById("statusHari").innerText = "Sedang Bekerja";
+
+        startTimer(data.jamMasuk);
+    }
+}
+
+/* GPS */
+function getLokasi(){
+    return new Promise((resolve,reject)=>{
+
+        navigator.geolocation.getCurrentPosition(pos=>{
+            resolve({
+                lat:pos.coords.latitude,
+                lng:pos.coords.longitude
+            });
+        },reject,{
+            enableHighAccuracy:true
+        });
+
+    });
+}
+
+/* JARAK */
+function hitungJarak(lat1,lon1,lat2,lon2){
+
+    const R = 6371000;
+
+    const dLat = (lat2-lat1)*Math.PI/180;
+    const dLon = (lon2-lon1)*Math.PI/180;
+
+    const a =
+        Math.sin(dLat/2)**2 +
+        Math.cos(lat1*Math.PI/180)*
+        Math.cos(lat2*Math.PI/180)*
+        Math.sin(dLon/2)**2;
+
+    return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+/* NAMA LOKASI */
+async function getNamaLokasi(lat,lng){
+
+    let jarak = hitungJarak(lat,lng,SPBU.lat,SPBU.lng);
+
+    if(jarak <= MAX_RADIUS){
+        return SPBU.nama;
+    }
+
+    let res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+    );
+
+    let data = await res.json();
+
+    return (data.display_name || "Lokasi tidak diketahui")
+    .split(",").slice(0,3).join(",");
+}
+
+/* ABSEN */
+window.mulaiAbsen = async function(){
+
+    document.getElementById("hasil").innerHTML =
+    "<div class='loader'></div><p>Memproses...</p>";
+
+    let tanggal = new Date().toISOString().split("T")[0];
+    let id = uid+"_"+tanggal;
+
+    let lokasi = await getLokasi();
+    let namaLokasi = await getNamaLokasi(lokasi.lat,lokasi.lng);
+    let now = new Date();
+
+    if(statusAbsen==="masuk"){
+
+        await setDoc(doc(db,"absensi",id),{
+            nama:namaUser,
+            jamMasuk: now.toISOString(),
+            lokasiMasuk: namaLokasi,
+            tanggal
+        });
+
+        statusAbsen="pulang";
+        sessionLock=true;
+        localStorage.setItem("working","true");
+
+        document.getElementById("btnAbsen").innerText="ABSEN PULANG";
+        document.getElementById("statusHari").innerText="Sedang Bekerja";
+
+        startTimer(now.toISOString());
+
+        document.getElementById("hasil").innerText="Absen masuk berhasil";
+
+    }else{
+
+        await updateDoc(doc(db,"absensi",id),{
+            jamPulang: now.toISOString(),
+            lokasiPulang: namaLokasi,
+            totalKerja: document.getElementById("timer").innerText
+        });
+
+        statusAbsen="selesai";
+        sessionLock=false;
+        localStorage.removeItem("working");
+
+        clearInterval(timerInterval);
+
+        document.getElementById("btnAbsen").disabled=true;
+        document.getElementById("btnAbsen").innerText="SELESAI";
+        document.getElementById("statusHari").innerText="Selesai";
+
+        document.getElementById("hasil").innerText="Absen pulang berhasil";
+    }
+}
+
+/* BLOCK BACK */
 history.pushState(null,null,location.href);
 
-window.onpopstate = function(){
-    history.pushState(null,null,location.href);
-};
-
-/* FORCE TETAP DI HALAMAN INI */
-setInterval(()=>{
-    if(isWorking){
+window.onpopstate=function(){
+    if(sessionLock){
         history.pushState(null,null,location.href);
+    }else{
+        window.location.href="index.html";
     }
-},1000);
-
-/* LOCK PAGE */
-function lockPage(){
-    isWorking = true;
-}
-
-/* UNLOCK PAGE */
-function unlockPage(){
-    isWorking = false;
-}
+};
 
 </script>
 
