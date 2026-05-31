@@ -70,166 +70,80 @@ button:hover{
     margin-top:15px;
     text-align:center;
 }
-
-.user-item{
-    background:#222;
-    padding:15px;
-    border-radius:10px;
-    margin-bottom:10px;
-}
-
-.user-item p{
-    margin:3px 0;
-}
-
-.btn-hapus{
-    background:#dc3545;
-    margin-top:10px;
-}
 </style>
 </head>
+
 <body>
 
 <div class="container">
 
-    <div class="card">
+<div class="card">
 
-        <h1>DASHBOARD ADMIN</h1>
+<h1>DASHBOARD ADMIN</h1>
 
-        <h2>Tambah Karyawan</h2>
+<h2>Tambah Karyawan</h2>
 
-        <input
-            type="text"
-            id="nama"
-            placeholder="Nama Lengkap">
+<input type="text" id="nama" placeholder="Nama Lengkap">
+<input type="text" id="username" placeholder="Username">
+<input type="password" id="password" placeholder="Password Awal">
 
-        <input
-            type="text"
-            id="username"
-            placeholder="Username">
+<button onclick="buatAkun()">BUAT AKUN</button>
 
-        <input
-            type="password"
-            id="password"
-            placeholder="Password Awal">
-
-        <button onclick="buatAkun()">
-            BUAT AKUN
-        </button>
-
-        <div id="status"></div>
-
-    </div>
-
-    <div class="card">
-
-        <h2>Daftar Karyawan</h2>
-
-        <div id="daftarUser"></div>
-
-    </div>
+<div id="status"></div>
 
 </div>
 
-<script>
+</div>
 
-let users = [];
+<script type="module">
 
-function buatAkun(){
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword } 
+from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
 
-    const nama =
-    document.getElementById("nama").value.trim();
+const firebaseConfig = {
+    apiKey: "AIzaSyDGArMeFqbZ95XXbdQV_7IDUzfii9k2HG0",
+    authDomain: "absensi-2fed9.firebaseapp.com",
+    projectId: "absensi-2fed9",
+    storageBucket: "absensi-2fed9.appspot.com",
+    messagingSenderId: "967198693925",
+    appId: "1:967198693925:web:ad0445a7451d9afe2c7dcc"
+};
 
-    const username =
-    document.getElementById("username").value.trim();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-    const password =
-    document.getElementById("password").value.trim();
+window.buatAkun = async function(){
 
-    if(
-        nama === "" ||
-        username === "" ||
-        password === ""
-    ){
-        alert("Lengkapi semua data");
+    const nama = document.getElementById("nama").value.trim();
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const status = document.getElementById("status");
+
+    if(!nama || !username || !password){
+        status.innerHTML = "❌ Lengkapi semua data";
         return;
     }
 
-    const email =
-    username + "@spbu.tap";
+    const email = username + "@spbu.tap";
 
-    users.push({
-        nama,
-        username,
-        email,
-        password
-    });
+    try {
 
-    document.getElementById("status").innerHTML = `
-        ✅ Akun berhasil dibuat
-        <br><br>
-        Email: ${email}
-    `;
+        await createUserWithEmailAndPassword(auth, email, password);
 
-    document.getElementById("nama").value = "";
-    document.getElementById("username").value = "";
-    document.getElementById("password").value = "";
-
-    tampilkanUser();
-
-}
-
-function tampilkanUser(){
-
-    const daftar =
-    document.getElementById("daftarUser");
-
-    daftar.innerHTML = "";
-
-    users.forEach((user,index)=>{
-
-        daftar.innerHTML += `
-            <div class="user-item">
-
-                <p><b>${user.nama}</b></p>
-
-                <p>
-                    Username :
-                    ${user.username}
-                </p>
-
-                <p>
-                    Email :
-                    ${user.email}
-                </p>
-
-                <button
-                    class="btn-hapus"
-                    onclick="hapusUser(${index})">
-                    HAPUS
-                </button>
-
-            </div>
+        status.innerHTML = `
+            ✅ Akun berhasil dibuat<br><br>
+            Nama: ${nama}<br>
+            Email: ${email}
         `;
 
-    });
+        document.getElementById("nama").value = "";
+        document.getElementById("username").value = "";
+        document.getElementById("password").value = "";
 
-}
-
-function hapusUser(index){
-
-    if(
-        confirm(
-            "Hapus akun ini?"
-        )
-    ){
-
-        users.splice(index,1);
-
-        tampilkanUser();
-
+    } catch(error){
+        status.innerHTML = "❌ " + error.message;
     }
-
 }
 
 </script>
