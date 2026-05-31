@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Absensi</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#000;
+    color:white;
+    padding:20px;
+}
+
+.container{
+    max-width:800px;
+    margin:auto;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+.card{
+    background:#151515;
+    padding:15px;
+    border-radius:12px;
+    margin-bottom:10px;
+}
+
+.card p{
+    margin:5px 0;
+    color:#ccc;
+}
+
+.badge{
+    display:inline-block;
+    padding:5px 10px;
+    border-radius:8px;
+    background:#198754;
+    color:white;
+    font-size:12px;
+}
+
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:20px;
+}
+
+button{
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    background:#dc3545;
+    color:white;
+    cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="topbar">
+    <h1>DATA ABSENSI</h1>
+    <button onclick="logout()">LOGOUT</button>
+</div>
+
+<div id="listAbsensi"></div>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, signOut, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+
+import { getFirestore, collection, getDocs, query, orderBy } 
+from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDGArMeFqbZ95XXbdQV_7IDUzfii9k2HG0",
+    authDomain: "absensi-2fed9.firebaseapp.com",
+    projectId: "absensi-2fed9",
+    storageBucket: "absensi-2fed9.appspot.com",
+    messagingSenderId: "967198693925",
+    appId: "1:967198693925:web:ad0445a7451d9afe2c7dcc"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// 🔒 proteksi halaman
+onAuthStateChanged(auth, (user)=>{
+    if(!user){
+        window.location.href = "index.html";
+    }
+});
+
+// logout
+window.logout = async function(){
+    await signOut(auth);
+    window.location.href = "index.html";
+}
+
+// ambil data absensi
+async function loadData(){
+
+    const container = document.getElementById("listAbsensi");
+    container.innerHTML = "Loading...";
+
+    const q = query(collection(db, "absensi"), orderBy("timestamp", "desc"));
+    const snap = await getDocs(q);
+
+    container.innerHTML = "";
+
+    snap.forEach(doc=>{
+
+        let data = doc.data();
+
+        container.innerHTML += `
+            <div class="card">
+
+                <p><b>Email:</b> ${data.email}</p>
+
+                <p><b>Lama Kerja:</b> 
+                    <span class="badge">${data.waktuKerja}</span>
+                </p>
+
+                <p><b>Status:</b> ${data.status}</p>
+
+                <p><b>Waktu:</b> ${new Date(data.timestamp.seconds * 1000).toLocaleString()}</p>
+
+            </div>
+        `;
+    });
+
+}
+
+loadData();
+
+</script>
+
+</body>
+</html>
